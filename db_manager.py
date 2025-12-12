@@ -176,3 +176,20 @@ def add_feedback(username, feedback_type, content):
             {"u": username, "t": feedback_type, "c": content}
         )
         s.commit()
+
+def get_play_records(username):
+    """获取用户的游玩记录（按时间倒序）"""
+    try:
+        conn = get_connection()
+        query = """
+            SELECT record_id, username, chart_id, song_name, difficulty, level,
+                   score, rating, comment, play_time
+            FROM play_records
+            WHERE username = :u
+            ORDER BY play_time DESC
+        """
+        df = conn.query(query, params={"u": username}, ttl=0)
+        return df
+    except Exception as e:
+        print("Error get_play_records:", e)
+        return pd.DataFrame()

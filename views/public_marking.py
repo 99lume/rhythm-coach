@@ -211,7 +211,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 3. 社区标注记录")
 
-    current_anns = db.get_annotations(chart_id=current_chart_id)
+    current_anns = db.get_annotations(chart_id=int(current_chart_id))
 
     if not current_anns.empty:
         st.caption(f"共 {len(current_anns)} 条")
