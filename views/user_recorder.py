@@ -79,19 +79,27 @@ level = selected_row["level"]
 
 st.success(f"🎵 当前选择：{song_name} ({difficulty}, Lv{level})")
 
-# ============================ 记录分数表单 ============================
+# ============================ 记录技术练习表单 ============================
 st.markdown("---")
-st.subheader("📝 记录我的成绩")
+st.subheader("📝 记录我的练习")
 
 with st.form("record_form"):
     col1, col2 = st.columns(2)
 
-    score = col1.number_input("得分", min_value=0, max_value=10000000, step=1)
-    rating = col2.selectbox("评级", ["F", "E", "D", "C", "B", "A", "S", "SS", "SSS"])
+    # 记录练习次数
+    practice_count = col1.number_input("练习次数", min_value=0, step=1)
 
+    # 记录失误段落
+    miss_section = st.text_area("失误段落", height=80, placeholder="请输入失误段落...")
+
+    # 选择失误原因
+    all_reasons = ["读谱没看清", "手速跟不上", "节奏难以把控", "手滑/断触", "耐力耗尽", "初见杀", "不熟悉这类配置", "其他"]
+    cause = st.selectbox("失误原因", all_reasons)
+
+    # 备注
     comment = st.text_area("备注（可选）", height=80)
 
-    submitted = st.form_submit_button("保存成绩")
+    submitted = st.form_submit_button("保存练习记录")
 
     if submitted:
         try:
@@ -101,24 +109,25 @@ with st.form("record_form"):
                 "song_name": song_name,
                 "difficulty": difficulty,
                 "level": level,
-                "score": score,
-                "rating": rating,
+                "practice_count": practice_count,
+                "miss_section": miss_section,
+                "cause": cause,
                 "comment": comment
             })
-            st.success("🎉 已成功记录")
+            st.success("🎉 已成功记录练习情况")
             st.rerun()
         except Exception as e:
             st.error(f"保存失败: {e}")
 
 # ============================ 我的历史记录 ============================
 st.markdown("---")
-st.subheader("📜 我的游玩记录")
+st.subheader("📜 我的技术练习记录")
 
 records = db.get_play_records(current_user)
 
 if not records.empty:
     st.dataframe(
-        records[["song_name", "difficulty", "level", "score", "rating", "comment", "play_time"]],
+        records[["song_name", "difficulty", "level", "practice_count", "miss_section", "cause", "comment", "play_time"]],
         use_container_width=True,
         hide_index=True
     )

@@ -92,16 +92,16 @@ def delete_annotation(ann_id):
 
 def add_play_record(data):
     """
-    新版打歌记录（score + rating + comment + level）
+    新版打歌记录（practice_count + miss_section + cause + comment）
     """
     conn = get_connection()
     with conn.session as s:
         s.execute(
-            text("""
+            text(""" 
                 INSERT INTO play_records (username, chart_id, song_name, difficulty, level,
-                                          score, rating, comment)
+                                          practice_count, miss_section, cause, comment)
                 VALUES (:username, :chart_id, :song_name, :difficulty, :level,
-                        :score, :rating, :comment)
+                        :practice_count, :miss_section, :cause, :comment)
             """),
             data
         )
@@ -109,13 +109,13 @@ def add_play_record(data):
 
 def get_play_records(username):
     """
-    获取用户评分记录（倒序）
+    获取用户的技术练习记录（按时间倒序）
     """
     try:
         conn = get_connection()
         query = """
-            SELECT record_id, username, chart_id, song_name, difficulty, level,
-                   score, rating, comment, play_time
+            SELECT record_id, username, song_name, difficulty, level,
+                   practice_count, miss_section, cause, comment, play_time
             FROM play_records
             WHERE username = :u
             ORDER BY play_time DESC
