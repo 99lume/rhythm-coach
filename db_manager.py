@@ -182,7 +182,7 @@ def get_play_records(username):
     try:
         conn = get_connection()
         query = """
-            SELECT record_id, username, chart_id, song_name, difficulty, level,
+            SELECT record_id, username, song_name, difficulty, level,
                    score, rating, comment, play_time
             FROM play_records
             WHERE username = :u
@@ -193,3 +193,4 @@ def get_play_records(username):
     except Exception as e:
         print("Error get_play_records:", e)
         return pd.DataFrame()
+

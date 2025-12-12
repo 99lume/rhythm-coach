@@ -7,7 +7,7 @@ import db_manager as db
 st.title("📊 个人能力诊断报告")
 
 # 1. 从数据库获取数据
-my_records = db.get_user_records(st.session_state.username)
+my_records = db.get_play_records(st.session_state.username)
 
 if my_records.empty:
     st.info(f"Hi, {st.session_state.username}，你还没有提交过任何实战记录，无法生成报告。")
