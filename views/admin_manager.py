@@ -10,11 +10,13 @@ st.markdown("**管理员专用：在此上传新谱面，图片将自动托管�
 # --- 区域 1：上传新谱面 ---
 with st.expander("📤 上传新谱面", expanded=True):
     with st.form("upload_chart_form", clear_on_submit=True):
-        col1, col2 = st.columns(2)
+        col1, col2,col3 = st.columns([2,1,1])
         with col1:
             song_name = st.text_input("🎵 歌曲名称", placeholder="例如：Freedom Dive")
         with col2:
-            difficulty = st.selectbox("⭐ 难度等级", ["Easy", "Normal", "Hard", "Expert", "Master"])
+            difficulty = st.selectbox("⭐ 难度", ["Easy", "Normal", "Hard", "Expert", "Master", "Append"])
+        with col3:
+            level = st.number_input("🔢 等级", min_value=1, max_value=38, step=1)
         
         uploaded_file = st.file_uploader("🖼️ 选择谱面长图", type=["png", "jpg", "jpeg"])
         
@@ -36,7 +38,7 @@ with st.expander("📤 上传新谱面", expanded=True):
                         
                         if image_url:
                             # 3. 将 URL 和信息存入数据库
-                            db.add_chart(song_name, difficulty, image_url)
+                            db.add_chart(song_name, difficulty, level, image_url)
                             
                             st.success(f"✅ 上传成功！")
                             st.caption(f"图片链接: {image_url}") # 调试用，让你看到生成的链接
@@ -58,7 +60,7 @@ df_charts = db.get_all_charts()
 if not df_charts.empty:
     # 显示表格
     st.dataframe(
-        df_charts[['song_id', 'song_name', 'difficulty', 'upload_time']], 
+        df_charts[['song_id', 'song_name', 'difficulty','level',  'upload_time']], 
         use_container_width=True, 
         hide_index=True
     )
@@ -68,8 +70,10 @@ if not df_charts.empty:
         with st.form("delete_form"):
             # 制作选项列表：ID - 歌名 - 难度
             options = df_charts.apply(
-                lambda x: f"ID:{x['song_id']} | {x['song_name']} ({x['difficulty']})", axis=1
-            )
+                lambda x: f"ID:{x['song_id']} | {x['song_name']} ({x['difficulty']}, Lv{x['level']})",
+                axis=1
+            )            
+
             selected_del = st.selectbox("选择要删除的谱面", options)
             
             if st.form_submit_button("确认删除", type="primary"):

@@ -1,95 +1,126 @@
 import streamlit as st
 import pandas as pd
-import time
 import db_manager as db
 
-st.title(f"📝 {st.session_state.username} 的实战记录")
-st.caption("数据实时同步至云端数据库。")
+st.title("📊 我的游玩记录")
 
-# 1. 获取基础数据
-charts_df = db.get_all_charts()
-all_anns = db.get_annotations() # 获取所有标注用于匹配
-
-if charts_df.empty:
-    st.warning("暂无谱面数据。")
+# 读取用户
+current_user = st.session_state.get("username", None)
+if not current_user:
+    st.error("请先登录")
     st.stop()
 
-# ----------------- 左侧：输入区域 -----------------
-col_input, col_history = st.columns([1, 1.2])
+# 读取谱面列表
+charts_df = db.get_all_charts()
+if charts_df.empty:
+    st.warning("⚠️ 谱面库空")
+    st.stop()
 
-with col_input:
-    st.subheader("➕ 新增记录")
-    with st.container(border=True):
-        # 选择歌曲
-        chart_name = st.selectbox("1. 选择歌曲", charts_df['song_name'].unique())
-        
-        # 智能分析提示
-        current_patterns = pd.DataFrame()
-        if not all_anns.empty:
-            current_patterns = all_anns[all_anns['chart_name'] == chart_name]
-        
-        with st.form("record_form"):
-            col1, col2 = st.columns(2)
-            with col1:
-                miss_section = st.number_input("失误段落 #", min_value=1, step=1)
-            with col2:
-                miss_count = st.number_input("失误数", min_value=1, step=1)
-            
-            cause = st.selectbox("失误原因", ["读谱没看清", "手速跟不上", "节奏乱了", "手滑/断触", "耐力耗尽", "初见杀"])
-            notes = st.text_input("备注 (可选)")
-            
-            # 智能匹配逻辑
-            detected_tags_list = ["常规段落"]
-            if not current_patterns.empty:
-                matched = current_patterns[
-                    (current_patterns['start_section'] <= miss_section) & 
-                    (current_patterns['end_section'] >= miss_section)
-                ]
-                if not matched.empty:
-                    raw_tags = matched.iloc[0]['tags']
-                    detected_tags_list = raw_tags.split(',') if raw_tags else []
-                    st.info(f"💡 系统分析：此段落包含 **{' + '.join(detected_tags_list)}** 难点")
-            
-            if st.form_submit_button("🚀 提交记录", type="primary"):
-                try:
-                    db.add_play_record({
-                        "u": st.session_state.username,
-                        "cn": chart_name,
-                        "ms": miss_section,
-                        "mc": miss_count,
-                        "cause": cause,
-                        "tags": ",".join(detected_tags_list),
-                        "notes": notes
-                    })
-                    st.success("✅ 已保存到云端")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"保存失败: {e}")
+# ============================ 侧边栏筛选区域 ============================
+with st.sidebar:
+    st.header("🎛️ 筛选曲目")
 
-# ----------------- 右侧：历史记录 -----------------
-with col_history:
-    st.subheader("📜 我的云端记录")
-    
-    # 从数据库获取记录
-    my_records = db.get_user_records(st.session_state.username)
-    
-    if not my_records.empty:
-        # 倒序遍历
-        for index, row in my_records[::-1].iterrows():
-            rec_title = f"{row['date_time']} | {row['chart_name']} (段落 #{row['miss_section']})"
-            
-            with st.expander(rec_title, expanded=False):
-                c1, c2, c3 = st.columns([2, 2, 1])
-                with c1:
-                    st.write(f"**失误:** {row['miss_count']}")
-                    st.write(f"**原因:** {row['cause']}")
-                with c2:
-                    st.write(f"**标签:** {row['detected_tags']}")
-                with c3:
-                    st.write("")
-                    if st.button("🗑️ 删除", key=f"del_{row['record_id']}"):
-                        db.delete_play_record(row['record_id'])
-                        st.success("已删除")
-                        st.rerun()
-    else:
-        st.info("暂无记录。")
+    # ① 搜索歌名
+    search_text = st.text_input("搜索歌名", placeholder="输入关键词…")
+
+    # ② 难度筛选
+    all_diff = sorted(charts_df["difficulty"].unique())
+    selected_diff = st.multiselect("难度", all_diff, default=all_diff)
+
+    # ③ 等级筛选（单一等级）
+    all_lv = sorted(charts_df["level"].dropna().unique().tolist())
+    selected_lv = st.selectbox(
+        "选择等级 Lv", ["全部"] + [str(lv) for lv in all_lv]
+    )
+
+    # ④ 等级排序方式
+    sort_mode = st.radio(
+        "等级排序方式",
+        ["默认", "从低到高 (升序)", "从高到低 (降序)"]
+    )
+
+# ============================ 筛选逻辑 ============================
+
+filtered = charts_df[
+    charts_df["difficulty"].isin(selected_diff) &
+    charts_df["song_name"].str.contains(search_text, case=False, na=False)
+]
+
+if selected_lv != "全部":
+    filtered = filtered[filtered["level"] == int(selected_lv)]
+
+# 排序
+if sort_mode == "从低到高 (升序)":
+    filtered = filtered.sort_values(by="level", ascending=True)
+elif sort_mode == "从高到低 (降序)":
+    filtered = filtered.sort_values(by="level", ascending=False)
+
+# 空过滤提示
+if filtered.empty:
+    st.warning("没有符合条件的谱面，请调整筛选条件。")
+    st.stop()
+
+# ============================ 下拉选择曲目 ============================
+chart_options = filtered.apply(
+    lambda x: f"ID:{x['song_id']} | {x['song_name']} ({x['difficulty']}, Lv{x['level']})",
+    axis=1
+)
+
+selected_label = st.selectbox("选择你游玩的谱面", chart_options)
+
+selected_row = filtered[
+    chart_options == selected_label
+].iloc[0]
+
+chart_id = selected_row["song_id"]
+song_name = selected_row["song_name"]
+difficulty = selected_row["difficulty"]
+level = selected_row["level"]
+
+st.success(f"🎵 当前选择：{song_name} ({difficulty}, Lv{level})")
+
+# ============================ 记录分数表单 ============================
+st.markdown("---")
+st.subheader("📝 记录我的成绩")
+
+with st.form("record_form"):
+    col1, col2 = st.columns(2)
+
+    score = col1.number_input("得分", min_value=0, max_value=10000000, step=1)
+    rating = col2.selectbox("评级", ["F", "E", "D", "C", "B", "A", "S", "SS", "SSS"])
+
+    comment = st.text_area("备注（可选）", height=80)
+
+    submitted = st.form_submit_button("保存成绩")
+
+    if submitted:
+        try:
+            db.add_play_record({
+                "username": current_user,
+                "chart_id": chart_id,
+                "song_name": song_name,
+                "difficulty": difficulty,
+                "level": level,
+                "score": score,
+                "rating": rating,
+                "comment": comment
+            })
+            st.success("🎉 已成功记录")
+            st.rerun()
+        except Exception as e:
+            st.error(f"保存失败: {e}")
+
+# ============================ 我的历史记录 ============================
+st.markdown("---")
+st.subheader("📜 我的游玩记录")
+
+records = db.get_play_records(current_user)
+
+if not records.empty:
+    st.dataframe(
+        records[["song_name", "difficulty", "level", "score", "rating", "comment", "play_time"]],
+        use_container_width=True,
+        hide_index=True
+    )
+else:
+    st.info("暂无记录")
