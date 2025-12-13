@@ -90,7 +90,7 @@ with st.form("record_form"):
     practice_count = col1.number_input("练习次数", min_value=0, step=1)
 
     # 记录失误段落
-    miss_section = st.text_area("失误段落", height=80, placeholder="请输入失误段落...")
+    miss_section = st.number_input("失误段落", min_value=1, step=1, help="请输入失误的段落编号")
 
     # 选择失误原因
     all_reasons = ["读谱没看清", "手速跟不上", "节奏难以把控", "手滑/断触", "耐力耗尽", "初见杀", "不熟悉这类配置", "其他"]
