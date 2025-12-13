@@ -121,7 +121,7 @@ with st.form("record_form"):
 
 # ============================ 我的历史记录 ============================
 st.markdown("---")
-st.subheader("📜 我的技术练习记录")
+st.subheader("📜 我的历史记录")
 
 records = db.get_play_records(current_user)
 

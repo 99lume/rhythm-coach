@@ -107,25 +107,6 @@ def add_play_record(data):
         )
         s.commit()
 
-def get_play_records(username):
-    """
-    获取用户的技术练习记录（按时间倒序）
-    """
-    try:
-        conn = get_connection()
-        query = """
-            SELECT record_id, username, song_name, difficulty, level,
-                   practice_count, miss_section, cause, comment, play_time
-            FROM play_records
-            WHERE username = :u
-            ORDER BY play_time DESC
-        """
-        df = conn.query(query, params={"u": username}, ttl=0)
-        return df
-    except Exception as e:
-        print("Error get_play_records:", e)
-        return pd.DataFrame()
-
 def delete_play_record(record_id):
     conn = get_connection()
     with conn.session as s:
@@ -178,12 +159,14 @@ def add_feedback(username, feedback_type, content):
         s.commit()
 
 def get_play_records(username):
-    """获取用户的游玩记录（按时间倒序）"""
+    """
+    获取用户的历史记录（按时间倒序）
+    """
     try:
         conn = get_connection()
         query = """
             SELECT record_id, username, song_name, difficulty, level,
-                   score, rating, comment, play_time
+                   practice_count, miss_section, cause, comment, play_time
             FROM play_records
             WHERE username = :u
             ORDER BY play_time DESC
